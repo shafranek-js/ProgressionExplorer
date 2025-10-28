@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chord Progression Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/soundfont-player@0.12.0/dist/soundfont-player.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col">
+
+    <!-- Welcome Modal -->
+    <div id="welcome-modal" style="display: none;" class="modal-overlay fixed inset-0 bg-gray-900 flex items-center justify-center z-[100]">
+        <div class="modal-content text-center p-8">
+            <h1 class="text-4xl font-bold mb-2 text-white">Welcome to the Chord Explorer!</h1>
+            <p class="text-lg text-gray-400 mb-8">Please select your instrument to get started.</p>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                <!-- Guitar Button Container -->
+                <div class="flex flex-col items-center gap-4">
+                    <button id="welcome-select-guitar" class="instrument-choice-btn group" aria-label="Select Guitar"></button>
+                    <span class="instrument-name">Guitar</span>
+                </div>
+                <!-- Ukulele Button Container -->
+                <div class="flex flex-col items-center gap-4">
+                    <button id="welcome-select-ukulele" class="instrument-choice-btn group" aria-label="Select Ukulele"></button>
+                    <span class="instrument-name">Ukulele</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Progression Toolbar -->
+    <div id="progression-toolbar-container" class="hidden fixed top-0 left-0 right-0 z-40">
+        <div id="progression-bar" class="bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 p-2">
+             <div class="max-w-7xl mx-auto flex items-center justify-center gap-4">
+                <!-- Actions -->
+                <div id="progression-bar-actions" class="flex items-center gap-3">
+                     <!-- Playback Controls -->
+                    <div id="playback-controls-container" class="flex items-center gap-4">
+                        <div id="global-bpm-control" class="flex items-center gap-2">
+                            <input id="global-bpm-slider" type="range" min="40" max="240" value="75" class="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                            <span id="global-bpm-value" class="text-sm font-bold text-blue-400 w-10 text-center">75</span>
+                        </div>
+                        <div class="flex items-center justify-center gap-2">
+                             <button id="loop-btn" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-all" title="Toggle Loop">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <button id="play-btn" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" title="Play">
+                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <button id="stop-btn" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" title="Stop">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 border-l border-gray-700 pl-4">
+                            <button id="zoom-out-btn" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-all" title="Zoom Out">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <button id="reset-zoom-btn" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-all" title="Reset View">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                </svg>
+                            </button>
+                            <button id="zoom-in-btn" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-all" title="Zoom In">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                     <div class="border-l border-gray-600 pl-3 flex items-center gap-2">
+                        <button id="prog-bar-save-btn" title="Save Progression" class="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" /></svg>
+                        </button>
+                        <button id="prog-bar-export-midi-btn" title="Export Progression as MIDI" class="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg transition-colors">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 00-1 1v1a1 1 0 002 0V3a1 1 0 00-1-1zM4 4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1V5a1 1 0 00-1-1H4zM3 15a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10z" /><path d="M13 9a1 1 0 100-2 1 1 0 000 2zM7 9a1 1 0 100-2 1 1 0 000 2zm3 4a1 1 0 100-2 1 1 0 000 2z" /></svg>
+                        </button>
+                        <button id="prog-bar-clear-btn" title="Clear Progression" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id="progression-bar-toggle" title="Toggle Toolbar" class="absolute left-1/2 -translate-x-1/2 bg-gray-900/80 backdrop-blur-sm border-b border-r border-l border-gray-700 rounded-b-lg px-4 py-1 transition-all duration-300 ease-in-out">
+            <svg class="w-5 h-5 text-gray-300 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+        </button>
+    </div>
+
+    <div id="app-content" class="hidden h-full w-full flex flex-row relative overflow-hidden">
+        <!-- Left Sidebar -->
+        <div id="left-sidebar" class="p-2 z-10 h-full">
+            <div class="bg-gray-900/50 rounded-lg flex flex-col items-center gap-2 p-1 h-full">
+                <button id="back-to-welcome-btn" title="Change Instrument" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+                </button>
+                <button id="libraries-btn" title="Libraries" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 4a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm2 0v12h12V4H4zm2 2a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 4a1 1 0 100 2h4a1 1 0 100-2H7z" /></svg>
+                </button>
+                <button id="circle-of-fifths-btn" title="Circle of Fifths" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3V3z" />
+                    </svg>
+                </button>
+                <button id="chord-atlas-btn" title="Chord Atlas" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </button>
+                <button id="settings-btn" title="Appearance Settings" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-1.57 1.996A1.532 1.532 0 013.17 8.51c-1.56.38-1.56 2.6 0 2.98a1.532 1.532 0 01.948 2.286c-.836 1.372.734 2.942 1.996 1.57a1.532 1.532 0 012.286.948c.38 1.56 2.6 1.56 2.98 0a1.532 1.532 0 012.286-.948c1.372.836 2.942-.734 1.57-1.996A1.532 1.532 0 0116.83 11.49c1.56-.38 1.56-2.6 0-2.98a1.532 1.532 0 01-.948-2.286c.836-1.372-.734-2.942-1.996-1.57A1.532 1.532 0 0111.49 3.17zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>
+                </button>
+                <button id="help-btn" title="Help" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        </div>
+        <button id="left-sidebar-toggle" title="Toggle Toolbar">
+            <svg class="w-5 h-5 text-gray-300 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+        </button>
+        
+        <div class="flex-grow flex flex-row min-w-0 overflow-x-hidden relative">
+            <div class="flex-grow flex flex-col min-w-0">
+                <div id="error-message" class="text-red-400 text-center hidden mt-4"></div>
+        
+                <!-- Progression Tree Viewport -->
+                <div id="progression-tree-container" class="relative w-full flex-grow">
+                    <svg id="tree-connections" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0;"></svg>
+                    <div id="tree-canvas">
+                        <div id="tree-root" class="flex flex-col items-center py-8 px-8" style="z-index:1;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Command Center Sidebar -->
+            <div id="command-center" class="h-full">
+                <div id="command-center-content" class="h-full overflow-y-auto">
+                    <div class="p-4 pt-6 text-xl font-bold text-white">Command Center</div>
+                    <!-- Accordion Sections -->
+                    <div class="space-y-1">
+                        <!-- Key & Progression Section -->
+                        <div>
+                            <button class="accordion-header w-full flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 transition-colors text-left font-semibold">
+                                <span>Key & Progression</span>
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            </button>
+                            <div class="accordion-content bg-gray-900/50">
+                                <div class="space-y-3">
+                                     <div class="flex items-center gap-4">
+                                        <label for="chord-select" class="text-sm font-medium text-gray-300 whitespace-nowrap">Key</label>
+                                        <select id="chord-select" class="flex-grow bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 disabled:opacity-50">
+                                            <!-- Options populated by JS -->
+                                        </select>
+                                        <div class="flex items-center gap-1.5 text-sm text-gray-300 font-medium">
+                                            <span>Maj</span>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="key-quality-toggle">
+                                                <span class="slider"></span>
+                                            </label>
+                                            <span>Min</span>
+                                        </div>
+                                    </div>
+                                     <div class="flex items-center gap-4">
+                                        <label for="progression-select" class="text-sm font-medium text-gray-300 whitespace-nowrap">Progression</label>
+                                        <select id="progression-select" class="flex-grow bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 disabled:opacity-50">
+                                            <!-- Options populated by JS -->
+                                        </select>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <label for="time-signature-select" class="text-sm font-medium text-gray-300 whitespace-nowrap">Time Signature</label>
+                                        <select id="time-signature-select" class="flex-grow bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
+                                            <!-- Options populated by JS -->
+                                        </select>
+                                    </div>
+                                    <div class="border-t border-gray-700 pt-3">
+                                        <div class="flex items-center justify-between">
+                                            <label for="borrowed-chords-toggle" class="text-sm font-medium text-gray-300 whitespace-nowrap" title="Include chords from the parallel minor key (modal interchange).">Borrowed Chords</label>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="borrowed-chords-toggle">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Progression Tools Section -->
+                        <div>
+                            <button class="accordion-header w-full flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 transition-colors text-left font-semibold">
+                                <span>Progression Tools</span>
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            </button>
+                            <div class="accordion-content bg-gray-900/50">
+                                <div class="space-y-3">
+                                    <button id="clear-progression-btn" class="hidden w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-left">
+                                        Clear Progression
+                                    </button>
+                                    <button id="back-to-explore-btn" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-left">
+                                        Back to Explorer
+                                    </button>
+                                    
+                                    <div class="border-t border-gray-700 pt-3">
+                                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Load / Delete</h4>
+                                        <div id="saved-progressions-list" class="max-h-48 overflow-y-auto space-y-1 pr-2 bg-gray-900/50 p-1 rounded-md">
+                                            <!-- list here -->
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-gray-700 pt-3">
+                                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Import / Export</h4>
+                                        <div class="space-y-2">
+                                            <button id="export-progressions-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-center">
+                                                Export All
+                                            </button>
+                                            <label for="import-progressions-input" class="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-center cursor-pointer">
+                                                Import from File
+                                            </label>
+                                            <input type="file" id="import-progressions-input" class="hidden" accept=".json,application/json">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         <!-- Song Tools Section -->
+                        <div>
+                            <button class="accordion-header w-full flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 transition-colors text-left font-semibold">
+                                <span>Song Tools</span>
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            </button>
+                            <div class="accordion-content bg-gray-900/50">
+                                <div class="space-y-3">
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Load / Delete</h4>
+                                        <div id="saved-songs-list" class="max-h-48 overflow-y-auto space-y-1 pr-2 bg-gray-900/50 p-1 rounded-md">
+                                            <!-- list here -->
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-gray-700 pt-3">
+                                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Import / Export</h4>
+                                        <div class="space-y-2">
+                                            <button id="export-songs-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-center">
+                                                Export All
+                                            </button>
+                                            <label for="import-songs-input" class="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-center cursor-pointer">
+                                                Import from File
+                                            </label>
+                                            <input type="file" id="import-songs-input" class="hidden" accept=".json,application/json">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Backup & Data Section -->
+                        <div>
+                            <button class="accordion-header w-full flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 transition-colors text-left font-semibold">
+                                <span>Backup & Data</span>
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            </button>
+                            <div class="accordion-content bg-gray-900/50">
+                                <div class="space-y-2">
+                                    <button id="view-log-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-left">
+                                        View Application Log
+                                    </button>
+                                    <button id="backup-save-states-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-left">
+                                        Save All States
+                                    </button>
+                                    <label for="backup-load-states-input" class="block w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-left cursor-pointer">
+                                        Load States from File
+                                    </label>
+                                    <input type="file" id="backup-load-states-input" class="hidden" accept=".json,application/json">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Toggle button is now a sibling, positioned absolutely -->
+            <button id="command-center-toggle" title="Toggle Command Center">
+                <svg class="w-5 h-5 text-gray-300 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Song Arranger Bottom Panel -->
+    <div id="song-arranger-panel">
+        <div id="song-arranger-header" class="flex items-center justify-between p-1 h-[48px] border-b border-gray-700 flex-shrink-0">
+            <div id="progression-preview-container" class="flex-grow flex items-center gap-2 overflow-x-auto min-w-0 mx-2">
+                <div id="progression-preview-chords" class="flex items-center" draggable="false">
+                    <!-- Preview injected by JS -->
+                </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button id="prog-bar-add-to-song-btn" title="Add Progression to Song" class="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded-lg transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                </button>
+                <button id="clear-song-btn" title="Clear Entire Song" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-all disabled:opacity-50" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                </button>
+                <div id="song-bpm-control" class="flex items-center gap-2 border-l border-gray-700 pl-2">
+                    <label for="song-bpm-slider" class="text-sm font-medium text-gray-300">Tempo:</label>
+                    <input id="song-bpm-slider" type="range" min="40" max="240" value="75" class="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="song-bpm-value" class="text-sm font-bold text-blue-400 w-8 text-center">75</span>
+                </div>
+                <button id="play-song-btn" title="Play Song" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                </button>
+                <button id="save-song-btn" title="Save Song" class="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" /></svg>
+                </button>
+            </div>
+        </div>
+        <div id="song-timeline-container" class="p-2">
+            <div id="song-timeline" class="flex items-start gap-2 overflow-x-auto pb-2">
+                <p id="arranger-placeholder" class="text-gray-500 self-center mx-auto">Drag a progression here or use the [+] button to start building your song.</p>
+            </div>
+        </div>
+    </div>
+    <button id="song-arranger-toggle" title="Toggle Song Arranger">
+        <svg class="w-5 h-5 text-gray-300 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+    </button>
+    
+    <div id="audio-loader">Loading audio...</div>
+
+    <!-- Help / User Guide Modal -->
+    <div id="help-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl relative flex flex-col" style="height: 90vh;">
+            <div class="flex-shrink-0 flex items-center justify-between p-3 bg-gray-900/50 border-b border-gray-700">
+                <h2 class="text-2xl font-bold">User Guide</h2>
+                <button id="close-help-modal-btn" class="text-gray-400 hover:text-white transition-colors" title="Close">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-4 space-y-4 text-gray-300 leading-relaxed">
+                <section>
+                    <h3 class="text-xl font-bold text-white mb-2">Welcome & Getting Started</h3>
+                    <p>Welcome to the Chord Progression Explorer! This tool is designed to help you discover, create, and play with chord progressions for guitar and ukulele.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Select Your Instrument:</strong> When you first open the app, choose between Guitar and Ukulele. This choice loads the correct chord voicings and tunings. You can switch instruments anytime using the <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">🏠</kbd> icon.</li>
+                        <li><strong>The Main Screen:</strong> The interface consists of the left toolbar, the main tree area for exploring chords, the right "Command Center" sidebar for core controls, and the bottom panels for your current progression and song arrangement.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-white mb-2">The Command Center</h3>
+                    <p>The sidebar on the right contains all the core tools you need, organized into collapsible sections.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Key & Progression:</strong> Change the key, switch between Major/Minor, and select from preset progressions. This is also where you can switch between <strong>'Free Explore (Guided)'</strong> and <strong>'Free Build (Manual)'</strong> modes.</li>
+                        <li><strong>Progression Tools:</strong> Save, clear, or load your created progressions.</li>
+                        <li><strong>Song Tools:</strong> Load and manage your saved songs.</li>
+                        <li><strong>Backup & Data:</strong> Save your entire workspace to a file or load it from a backup.</li>
+                        <li><strong>Collapse It:</strong> Click the arrow button on the edge of the sidebar to collapse it and maximize your workspace.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-white mb-2">Exploring & Building Progressions</h3>
+                    <p>The core of the app is the interactive tree. You can build progressions in two ways:</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Free Explore (Guided Mode):</strong> This is the default mode. The app guides you through common chord choices based on music theory. Click one of the suggested starting chords (e.g., "I" or "vi") to begin. The app will then show you the next set of common chords. Click one of those to continue building your progression.</li>
+                        <li><strong>Free Build (Manual Mode):</strong> Select this from the "Progression" dropdown in the Command Center. Instead of suggestions, you'll see a <strong>[ + ] Add Chord</strong> button. This opens the full Chord Library, allowing you to add <em>any</em> chord you want at any point in the progression.</li>
+                        <li><strong>Building Your Path:</strong> In either mode, clicking on a chord adds it to your current path, which will remain highlighted.</li>
+                        <li><strong>The Progression Toolbar:</strong> Once you've selected two or more chords, a toolbar will appear at the top. This contains controls to play, loop, save, and export your current progression as a MIDI file. You can hide it by clicking its handle.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-white mb-2">Working with Individual Chords</h3>
+                    <p>Each chord in the tree is interactive. Hover over a chord to reveal several icons for customization:</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Change Voicings (⚙️ Icon):</strong> Click the gear icon to quickly cycle through available voicings (different ways to play the same chord). <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">Right-click</kbd> the icon to open a modal showing all available voicings for that chord.</li>
+                        <li><strong>Set Playback Style (Icons on left & bottom):</strong>
+                            <ul class="list-['-_'] list-inside mt-1 pl-4 space-y-1">
+                                <li><strong class="text-blue-400">Strumming (↓↑ Icon):</strong> Click to open the Strumming Library and assign a specific strumming pattern to this chord.</li>
+                                <li><strong class="text-blue-400">Arpeggio (≡ Icon):</strong> Click to open the Arpeggio Library and assign a fingerpicking pattern.</li>
+                                <li><strong class="text-blue-400">Block Chord (■ Icon):</strong> Click to have the chord play as a simple, single strum. This is the default if no other pattern is set.</li>
+                                <li>Patterns are <strong class="text-blue-400">inherited</strong>. If you set a pattern on a chord, all subsequent chords in the path will use that pattern until you set a new one.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Chord Substitutions:</strong> <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">Right-click</kbd> anywhere else on a chord to see a list of common theoretical substitutions (e.g., swapping a C major for an Am).</li>
+                        <li><strong>Detailed View:</strong> <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">Ctrl + Click</kbd> (or <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">Cmd + Click</kbd>) on a chord's diagram to open a large, detailed fretboard visualizer.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-white mb-2">Libraries & Custom Patterns</h3>
+                    <p>You can access all your saved assets and create new ones through the Libraries.</p>
+                     <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Main Library Menu:</strong> Click the <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">📚</kbd> icon in the left toolbar to open a menu with quick links to all libraries: Songs, Progressions, Chords, Strumming Patterns, and Arpeggio Patterns.</li>
+                        <li><strong>Pattern Libraries:</strong> Here you can browse preset strumming and arpeggio patterns. You can preview any pattern by clicking on it.</li>
+                        <li><strong>Create Custom Patterns:</strong> In the Strumming or Arpeggio library, click the <kbd class="bg-green-600 text-white px-1.5 py-0.5 rounded text-sm">+ Create</kbd> button to open the <strong>Rhythm Editor</strong>.</li>
+                        <li><strong>The Rhythm Editor:</strong> This powerful tool lets you design your own patterns.
+                            <ul class="list-['-_'] list-inside mt-1 pl-4 space-y-1">
+                                <li>For <strong>strumming</strong>, click on the grid cells to cycle between Down, Up, and Rest.</li>
+                                <li>For <strong>arpeggios</strong>, click cells to toggle notes on or off for each string at each step in the sequence.</li>
+                                <li>You can name your pattern, set its time signature, preview it, and save it to your custom library for future use.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+                 <section>
+                    <h3 class="text-xl font-bold text-white mb-2">The Song Arranger</h3>
+                    <p>The Song Arranger is a docked panel at the very bottom of the screen. Click its header to expand or collapse it. It allows you to chain multiple progressions together to form a full song.</p>
+                     <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Add Progressions:</strong> Once you've created a progression in the tree, click the <kbd class="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-sm">+ Add to Song</kbd> button in the Song Arranger's header to add it as a new section.</li>
+                        <li><strong>Drag & Drop:</strong> For an even faster workflow, you can simply <strong>drag the sequence of chord pills</strong> from the Song Arranger's header and <strong>drop it directly</strong> into the Song Arranger timeline.</li>
+                        <li><strong>Organize:</strong> Drag and drop sections within the timeline to reorder them. You can also rename sections and delete them.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-white mb-2">Settings & Data</h3>
+                    <p>Click the <kbd class="bg-gray-700 px-1.5 py-0.5 rounded text-sm">⚙️</kbd> (Appearance Settings) icon to customize the look of the application.</p>
+                     <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Appearance:</strong> Change the background color and the colors used for different chord functions (Primary, Secondary, Borrowed, etc.).</li>
+                    </ul>
+                </section>
+                <div class="border-t border-gray-700 mt-4 pt-4 text-center">
+                    <button id="help-view-log-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">View Application Log</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Key Explorer Modal -->
+    <div id="key-explorer-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-xl text-center relative">
+            <h2 class="text-2xl font-bold mb-4">Circle of Fifths</h2>
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div id="circle-of-fifths-container" class="w-full">
+                <!-- SVG will be injected here -->
+            </div>
+            <p class="text-sm text-gray-400 mt-4">Diatonic chords for the selected key are highlighted. Click any key to change the root.</p>
+        </div>
+    </div>
+
+    <!-- Fretboard Visualizer Modal -->
+    <div id="fretboard-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-4xl text-center relative">
+            <button id="close-fretboard-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 id="fretboard-modal-title" class="text-2xl font-bold mb-2">Fretboard</h2>
+            <!-- Voicing Controls -->
+            <div class="flex items-center justify-center gap-4 mb-4">
+                <button id="fretboard-prev-voicing-btn" title="Previous Voicing" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <span id="fretboard-voicing-indicator" class="text-sm font-medium text-gray-300 w-28 text-center">Voicing 1 of 1</span>
+                <button id="fretboard-next-voicing-btn" title="Next Voicing" class="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+            <div id="fretboard-visualizer-container" class="w-full bg-gray-900/50 p-4 rounded-lg">
+                <!-- SVG will be injected here -->
+            </div>
+             <p class="text-sm text-gray-400 mt-4">Showing a playable voicing for the chord. Use the arrows to explore other inversions up the neck. <span class="text-blue-400 font-semibold">Blue</span> dots are root notes.</p>
+        </div>
+    </div>
+    
+    <!-- Strumming Style Modal -->
+    <div id="strumming-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg text-center relative flex flex-col" style="max-height: 90vh;">
+            <div class="flex-shrink-0">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold">Strumming Style Library</h2>
+                    <div class="flex items-center gap-2">
+                        <button id="create-custom-strum-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg transition-colors text-sm" title="Create new pattern">+ Create</button>
+                        <button id="close-strumming-modal-btn" class="text-gray-400 hover:text-white transition-colors" title="Close">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="strum-bpm-control-container" class="mb-4">
+                    <label for="strum-bpm-slider" class="block text-lg font-semibold text-gray-300 mb-2">Tempo (BPM): <span id="strum-bpm-value" class="font-bold text-blue-400">120</span></label>
+                    <input id="strum-bpm-slider" type="range" min="40" max="240" value="120" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-y-auto pr-2 space-y-4">
+                <!-- Strumming patterns will be injected here by JS -->
+                <div id="strumming-patterns-container" class="space-y-3"></div>
+            </div>
+             <div class="flex-shrink-0 flex items-center justify-end gap-4 mt-4 border-t border-gray-700 pt-3">
+                <button id="apply-strum-to-chord-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Apply to Chord</button>
+                <button id="apply-strum-to-all-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Apply to All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Arpeggio Style Modal -->
+    <div id="arpeggio-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg text-center relative flex flex-col" style="max-height: 90vh;">
+            <div class="flex-shrink-0">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold">Arpeggio Style Library</h2>
+                     <div class="flex items-center gap-2">
+                        <button id="create-custom-arpeggio-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg transition-colors text-sm" title="Create new pattern">+ Create</button>
+                        <button id="close-arpeggio-modal-btn" class="text-gray-400 hover:text-white transition-colors" title="Close">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="arpeggio-bpm-control-container" class="mb-4">
+                    <label for="arpeggio-bpm-slider" class="block text-lg font-semibold text-gray-300 mb-2">Tempo (BPM): <span id="arpeggio-bpm-value" class="font-bold text-blue-400">120</span></label>
+                    <input id="arpeggio-bpm-slider" type="range" min="40" max="240" value="120" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-y-auto pr-2 space-y-4">
+                 <!-- Arpeggio patterns will be injected here by JS -->
+                <div id="arpeggio-patterns-container" class="space-y-3"></div>
+            </div>
+            <div class="flex-shrink-0 flex items-center justify-end gap-4 mt-4 border-t border-gray-700 pt-3">
+                <button id="apply-arpeggio-to-chord-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Apply to Chord</button>
+                <button id="apply-arpeggio-to-all-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Apply to All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Progression Modal -->
+    <div id="save-progression-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative">
+            <h2 class="text-2xl font-bold mb-4">Save Progression</h2>
+            <button id="close-save-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="space-y-4">
+                <div>
+                    <label for="progression-name-input" class="block text-sm font-medium text-gray-300 mb-1">Progression Name</label>
+                    <input type="text" id="progression-name-input" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="e.g., My Awesome Song Idea">
+                </div>
+                <button id="confirm-save-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chord Library Modal -->
+    <div id="chord-library-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-4xl relative flex flex-col" style="height: 90vh;">
+            <div class="flex-shrink-0">
+                <h2 class="text-2xl font-bold mb-4">Chord Library</h2>
+                <button id="close-chord-library-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <div class="mb-4">
+                    <input type="search" id="chord-library-search-input" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Search for a chord (e.g., C, Am7, G#dim)...">
+                </div>
+            </div>
+            <div id="chord-library-list" class="flex-grow overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Chord items will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Voicing Selector Modal -->
+    <div id="voicing-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-2xl relative flex flex-col" style="max-height: 90vh;">
+            <div class="flex-shrink-0">
+                <h2 id="voicing-modal-title" class="text-2xl font-bold mb-4">Select Voicing</h2>
+                <button id="close-voicing-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="voicing-options-container" class="flex-grow overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Voicing options will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Chord Substitution Modal -->
+    <div id="substitution-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-4xl relative flex flex-col" style="max-height: 90vh;">
+            <div class="flex-shrink-0">
+                <h2 id="substitution-modal-title" class="text-2xl font-bold mb-4">Chord Substitutions</h2>
+                <button id="close-substitution-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="substitution-options-container" class="flex-grow overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Substitution options will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Rhythm Editor Modal -->
+    <div id="rhythm-editor-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-4xl relative">
+            <h2 class="text-2xl font-bold mb-4">Rhythm Editor</h2>
+            <button id="close-rhythm-editor-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <!-- Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 border-b border-gray-700 pb-3">
+                <div>
+                    <label for="rhythm-pattern-name" class="block text-sm font-medium text-gray-300 mb-1">Pattern Name</label>
+                    <input type="text" id="rhythm-pattern-name" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="My Awesome Rhythm">
+                </div>
+                <div>
+                    <label for="rhythm-pattern-type" class="block text-sm font-medium text-gray-300 mb-1">Pattern Type</label>
+                    <select id="rhythm-pattern-type" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="strum" selected>Strumming</option>
+                        <option value="arpeggio">Arpeggio</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="rhythm-time-signature" class="block text-sm font-medium text-gray-300 mb-1">Time Signature</label>
+                    <select id="rhythm-time-signature" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="4/4" selected>4/4 (Common Time)</option>
+                        <option value="2/2">2/2 (Cut Time)</option>
+                        <option value="2/4">2/4</option>
+                        <option value="3/4">3/4</option>
+                        <option value="3/8">3/8</option>
+                        <option value="6/8">6/8</option>
+                        <option value="9/8">9/8</option>
+                        <option value="12/8">12/8</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Editor Grid -->
+            <div class="bg-gray-900/50 p-3 rounded-lg min-h-[150px]">
+                 <div id="rhythm-editor-grid-container" class="w-full overflow-x-auto">
+                    <!-- Grid will be injected here -->
+                </div>
+            </div>
+           
+            <!-- Footer Actions -->
+            <div class="flex items-center justify-end gap-4 mt-4">
+                <button id="rhythm-editor-preview-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Preview</button>
+                <button id="rhythm-editor-cancel-btn" class="text-gray-300 hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Cancel</button>
+                <button id="rhythm-editor-save-as-btn" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Save As New</button>
+                <button id="rhythm-editor-save-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Save Pattern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Song Modal -->
+    <div id="save-song-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-lg relative">
+            <h2 class="text-2xl font-bold mb-4">Save Song</h2>
+            <button id="close-save-song-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="space-y-4">
+                <div>
+                    <label for="song-name-input" class="block text-sm font-medium text-gray-300 mb-1">Song Name</label>
+                    <input type="text" id="song-name-input" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="e.g., My Masterpiece">
+                </div>
+                <button id="confirm-save-song-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color Settings Modal -->
+    <div id="color-settings-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-md relative">
+            <h2 class="text-2xl font-bold mb-4">Chord Color Settings</h2>
+            <button id="close-color-settings-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <label for="color-primary" class="text-gray-300">Primary (I, IV, V)</label>
+                    <input type="color" id="color-primary" class="w-16 h-8 p-1 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="color-secondary" class="text-gray-300">Secondary (ii, iii, vi)</label>
+                    <input type="color" id="color-secondary" class="w-16 h-8 p-1 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="color-borrowed" class="text-gray-300">Borrowed Chords</label>
+                    <input type="color" id="color-borrowed" class="w-16 h-8 p-1 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="color-tense" class="text-gray-300">Tense (e.g., vii°)</label>
+                    <input type="color" id="color-tense" class="w-16 h-8 p-1 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="color-secondary-dominant" class="text-gray-300">Secondary Dominants</label>
+                    <input type="color" id="color-secondary-dominant" class="w-16 h-8 p-1 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-4 mt-4">
+                <button id="reset-colors-btn" class="text-gray-300 hover:text-white font-bold py-2 px-4 rounded-lg transition-colors">Reset to Defaults</button>
+                <button id="save-colors-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Modal -->
+    <div id="log-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-3xl relative flex flex-col" style="height: 80vh;">
+            <div class="flex-shrink-0 flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-bold">Application Log</h2>
+                <div>
+                    <button id="copy-log-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg transition-colors text-sm mr-2" title="Copy Log">Copy</button>
+                    <button id="clear-log-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-lg transition-colors text-sm" title="Clear Log">Clear</button>
+                    <button id="close-log-modal-btn" class="text-gray-400 hover:text-white transition-colors ml-4" title="Close">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="log-container" class="flex-grow overflow-y-auto bg-gray-900/50 p-3 rounded-md font-mono text-sm space-y-2">
+                <!-- Log entries will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Appearance Settings Modal -->
+    <div id="appearance-settings-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-md relative">
+            <h2 class="text-2xl font-bold mb-4">Appearance Settings</h2>
+            <button id="close-appearance-settings-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="space-y-4">
+                <!-- Appearance -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Theme</h3>
+                    <div class="space-y-2 bg-gray-700/50 p-2 rounded-lg">
+                         <div class="flex items-center justify-between">
+                            <label for="settings-background-color" class="text-gray-300">Background</label>
+                            <input type="color" id="settings-background-color" class="w-16 h-8 p-1 bg-gray-700 border border-gray-600 rounded cursor-pointer">
+                        </div>
+                        <button id="settings-reset-background-color-btn" class="w-full text-center bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-lg transition-colors text-sm">
+                            Reset to Instrument Default
+                        </button>
+                        <div class="pt-1">
+                            <button id="settings-color-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-left">
+                                Chord Colors
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Libraries Modal -->
+    <div id="libraries-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+        <div class="modal-content bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-md relative">
+            <h2 class="text-2xl font-bold mb-4">Libraries</h2>
+            <button id="close-libraries-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="space-y-3">
+                <button id="libraries-song-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-left">
+                    Song Library
+                </button>
+                <button id="libraries-progression-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-left">
+                    Progression Library
+                </button>
+                <div class="border-t border-gray-700 pt-3"></div>
+                <button id="libraries-chord-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-left">
+                    Chord Voicing Library
+                </button>
+                <button id="libraries-strumming-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-left">
+                    Strumming Pattern Library
+                </button>
+                <button id="libraries-arpeggio-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-left">
+                    Arpeggio Pattern Library
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pattern Selection Popover -->
+    <div id="pattern-popover" class="hidden fixed bg-gray-800 border border-gray-600 rounded-lg shadow-2xl z-[60] w-full max-w-sm flex flex-col transition-all duration-200 ease-out" style="max-height: 400px; opacity: 0; transform: scale(0.95);">
+        <div class="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-700">
+            <h2 id="pattern-popover-title" class="text-lg font-bold">Select Pattern</h2>
+            <button id="pattern-popover-close-btn" class="text-gray-400 hover:text-white transition-colors" title="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="pattern-popover-content" class="flex-grow overflow-y-auto p-3 pr-2 space-y-4">
+            <!-- Patterns will be injected here -->
+        </div>
+        <div class="flex-shrink-0 p-3 border-t border-gray-700">
+            <button id="pattern-popover-create-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">+ Create New Pattern</button>
+        </div>
+    </div>
+
+    <script type="module" src="./index.tsx"></script>
+</body>
+</html>

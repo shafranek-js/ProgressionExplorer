@@ -1,0 +1,769 @@
+:root {
+    --chord-color-primary: #10b981;
+    --chord-color-secondary: #3b82f6;
+    --chord-color-borrowed: #ef4444;
+    --chord-color-tense: #f59e0b;
+    --chord-color-secondary-dominant: #a855f7;
+    --chord-color-default: #4b5563; /* gray-600 */
+}
+html {
+    background-color: #111827; /* Corresponds to Tailwind's bg-gray-900 */
+    transition: background-color 0.5s ease-in-out;
+}
+body { font-family: 'Inter', sans-serif; }
+.chord-node {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: 3px solid var(--chord-color-default);
+    position: relative; /* For positioning child elements like the voicing button */
+}
+.chord-node.function-primary { border-color: var(--chord-color-primary); }
+.chord-node.function-secondary { border-color: var(--chord-color-secondary); }
+.chord-node.function-borrowed { border-color: var(--chord-color-borrowed); }
+.chord-node.function-tense { border-color: var(--chord-color-tense); }
+.chord-node.function-secondaryDominant { border-color: var(--chord-color-secondary-dominant); }
+
+.chord-node:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px currentColor;
+}
+.chord-node[data-expanded="true"] {
+     box-shadow: 0 0 15px currentColor;
+}
+/* Contextual buttons on chord node */
+.chord-node .change-voicing-btn,
+.chord-node .change-strum-btn,
+.chord-node .change-arpeggio-btn,
+.chord-node .block-chord-btn {
+    position: absolute;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    z-index: 5;
+}
+.chord-node .change-voicing-btn {
+    top: 4px;
+    right: 4px;
+}
+.chord-node .change-strum-btn {
+    bottom: 4px;
+    left: 4px;
+}
+.chord-node .change-arpeggio-btn {
+    top: 4px;
+    left: 4px;
+}
+.chord-node .block-chord-btn {
+    bottom: 4px;
+    right: 4px;
+    z-index: 6; /* Higher than indicator */
+}
+
+.chord-node:hover .change-voicing-btn,
+.chord-node:hover .change-strum-btn,
+.chord-node:hover .change-arpeggio-btn,
+.chord-node:hover .block-chord-btn {
+    opacity: 1;
+    visibility: visible;
+}
+
+.pattern-indicator {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    pointer-events: none; /* So it doesn't interfere with clicks on the node */
+}
+.pattern-indicator svg {
+    width: 100%;
+    height: 100%;
+    color: #d1d5db; /* gray-300 */
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+.pattern-indicator.inherited svg {
+    opacity: 0.6;
+    color: #9ca3af; /* gray-400 */
+}
+
+/* Highlighting for nodes and SVG paths */
+.chord-node.highlighted {
+    box-shadow: 0 0 15px currentColor;
+    border-width: 4px;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 15px var(--pulse-color); }
+  50% { box-shadow: 0 0 25px var(--pulse-color); }
+}
+.chord-node.playing {
+    --pulse-color: currentColor;
+    animation: pulse 0.8s ease-in-out;
+}
+#tree-connections path {
+    transition: stroke 0.3s ease, stroke-width 0.3s ease;
+}
+#tree-connections path.highlighted {
+    stroke: #3b82f6;
+    stroke-width: 3px;
+}
+ /* Dimming for non-path nodes */
+#tree-root.path-highlighted .chord-node {
+    opacity: 0.4;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+#tree-root.path-highlighted .chord-node.highlighted,
+#tree-root.path-highlighted .chord-node:hover,
+#tree-root.path-highlighted .chord-node.playing {
+    opacity: 1;
+}
+
+/* Tooltip Styles */
+.chord-node .chord-tooltip {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #111827; /* bg-gray-900 */
+    color: #d1d5db; /* gray-300 */
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #374151; /* gray-700 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+    width: max-content;
+    z-index: 10;
+    text-align: center;
+}
+.chord-node .chord-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #111827 transparent transparent transparent;
+}
+.chord-node:hover .chord-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+#audio-loader {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0,0,0,0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 1000;
+    display: none; /* Hidden by default */
+}
+.node-wrapper {
+    position: relative;
+}
+.children-container {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content; /* Ensure container is wide enough for its flex children */
+}
+/* Panning styles */
+#progression-tree-container {
+    overflow: auto;
+    cursor: grab;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+    transition: background-color 0.5s ease-in-out;
+}
+#progression-tree-container.panning {
+    cursor: grabbing;
+}
+#progression-tree-container::-webkit-scrollbar {
+    display: none;
+}
+/* Infinite-canvas style */
+#tree-canvas { 
+    position: relative; 
+    width: 6000px; 
+    height: 6000px; 
+}
+#tree-root { 
+    position: absolute; 
+    left: 50%; 
+    top: 50%;
+    transform: translate(-50%, -50%); 
+    min-width: max-content; 
+}
+
+/* Modal Base Styles */
+.modal-overlay {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+.modal-overlay.active {
+    opacity: 1;
+}
+.modal-overlay .modal-content {
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Popover Styles */
+#pattern-popover.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Welcome Modal Styles */
+.instrument-choice-btn {
+    background-color: #1f2937; /* gray-800 */
+    border: 2px solid #374151; /* gray-700 */
+    border-radius: 0.75rem;
+    padding: 0;
+    width: 374px;
+    height: 374px;
+    transition: all 0.2s ease-in-out;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.instrument-choice-btn:hover {
+    transform: translateY(-5px) scale(1.05);
+    border-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -2px rgba(59, 130, 246, 0.1);
+}
+#welcome-select-guitar {
+    background-image: url('https://chatgpt.com/backend-api/estuary/public_content/enc/eyJpZCI6Im1fNjhmNmI5NGJkY2RjODE5MTg0OTM1OTUwOWM0NWVmM2M6ZmlsZV8wMDAwMDAwMGU4MzQ2MWY0YmY1MDZiNjUyOTJkYjczNiIsInRzIjoiMjAzODEiLCJwIjoicHlpIiwiY2lkIjoiMSIsInNpZyI6IjA0OTgyOGFlZDFkNDUxNDg1MWJiNTIyM2IyMmFiZTdlZjkzM2E0YWNjZmE1ZDdiNzA5Zjc5MDg4N2Q3MGIyMzIiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsLCJjcCI6bnVsbCwibWEiOm51bGx9');
+    background-color: #143629;
+}
+#welcome-select-ukulele {
+    background-image: url('https://chatgpt.com/backend-api/estuary/public_content/enc/eyJpZCI6Im1fNjhmNmI5OTVmMTMwODE5MTk4YzdkNTBjYWYyMDRhNGY6ZmlsZV8wMDAwMDAwMDkzOWM2MjQzYWQ4OTZlZDBhZjZkN2ViNiIsInRzIjoiMjAzODEiLCJwIjoicHlpIiwiY2lkIjoiMSIsInNpZyI6ImIwMzRlNGQ1ZTU5MmY1ZTY0NTg3OTEzODVlNTU3NTgzOGZiNDM1NWMxMThhMmU2ZTFjYTRlNTI0NzE5MzAzNmEiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsLCJjcCI6bnVsbCwibWEiOm51bGx9');
+    background-color: #1c2b4d;
+}
+.instrument-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #e5e7eb; /* gray-200 */
+}
+#welcome-modal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+#welcome-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Left Sidebar Styles */
+#left-sidebar {
+    width: 3.5rem; /* 56px */
+    transition: transform 0.3s ease-in-out, margin-left 0.3s ease-in-out;
+    flex-shrink: 0;
+}
+#left-sidebar.collapsed {
+    transform: translateX(-100%);
+    margin-left: -3.5rem;
+}
+#left-sidebar-toggle {
+    position: absolute;
+    top: 50%;
+    left: 3.5rem;
+    transform: translateY(-50%);
+    background-color: #1f2937;
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    padding: 1rem 0.25rem;
+    z-index: 20;
+    transition: left 0.3s ease-in-out, background-color 0.2s;
+}
+#left-sidebar-toggle:hover {
+    background-color: #374151;
+}
+#left-sidebar.collapsed ~ #left-sidebar-toggle {
+    left: 0;
+}
+#left-sidebar.collapsed ~ #left-sidebar-toggle svg {
+    transform: rotate(180deg);
+}
+
+/* Command Center Sidebar Styles */
+#command-center {
+    width: 320px;
+    background-color: #1f2937; /* gray-800 */
+    transition: transform 0.3s ease-in-out, margin-right 0.3s ease-in-out;
+    flex-shrink: 0;
+    position: relative;
+    overflow-x: hidden;
+}
+#command-center.collapsed {
+    transform: translateX(100%);
+    margin-right: -320px;
+}
+#command-center-toggle {
+    position: absolute;
+    top: 50%;
+    right: 320px; /* Positioned left of the expanded sidebar */
+    transform: translateY(-50%);
+    background-color: #1f2937; /* gray-800 */
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
+    padding: 1rem 0.25rem;
+    z-index: 20;
+    transition: right 0.3s ease-in-out, background-color 0.2s;
+}
+#command-center-toggle:hover {
+    background-color: #374151; /* gray-700 */
+}
+#command-center.collapsed + #command-center-toggle {
+    right: 0;
+}
+#command-center.collapsed + #command-center-toggle svg {
+    transform: rotate(180deg);
+}
+#command-center-content {
+    width: 320px; /* fixed width to prevent content wrapping during transition */
+}
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    padding: 0 0.75rem;
+}
+.accordion-content.open {
+    max-height: 500px; /* Adjust as needed */
+    padding: 0.75rem;
+}
+.accordion-header svg {
+    transition: transform 0.3s ease-in-out;
+}
+.accordion-header.open svg {
+    transform: rotate(90deg);
+}
+
+/* Key Explorer Specific Styles */
+#circle-of-fifths-container svg .key-label {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none;
+}
+ #circle-of-fifths-container svg .key-label:hover .major-key,
+ #circle-of-fifths-container svg .key-label:hover .minor-key {
+    fill: #60a5fa; /* blue-400 */
+}
+#circle-of-fifths-container svg .major-key {
+    font-size: 1.25rem;
+    font-weight: bold;
+    fill: #d1d5db; /* gray-300 */
+}
+#circle-of-fifths-container svg .minor-key {
+    font-size: 1rem;
+    fill: #9ca3af; /* gray-400 */
+}
+#circle-of-fifths-container svg .highlighted .major-key,
+#circle-of-fifths-container svg .highlighted .minor-key {
+    fill: #3b82f6; /* blue-500 */
+}
+ #circle-of-fifths-container svg .selected .major-key {
+     font-size: 1.4rem;
+ }
+ #circle-of-fifths-container svg .selected .minor-key {
+     font-weight: bold;
+}
+
+/* Fretboard Visualizer Styles */
+#fretboard-visualizer-container .fretboard-note {
+    font-family: sans-serif;
+    font-size: 14px;
+    fill: #111827;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    font-weight: 600;
+}
+
+/* String Highlighting for Arpeggios */
+.string-line {
+    transition: stroke 0.15s ease-out, stroke-width 0.15s ease-out;
+}
+.string-line.string-highlight {
+    stroke: #60a5fa; /* blue-400 */
+    stroke-width: 2.5px !important;
+}
+
+/* Playback & Loop Styles */
+.playback-pattern {
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+.playback-pattern:hover {
+    background-color: #374151; /* gray-700 */
+    border-color: #4b5563; /* gray-600 */
+}
+.playback-pattern.active {
+    border-color: #3b82f6; /* blue-500 */
+    background-color: #1f2937; /* gray-800 */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+.strum-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    transition: transform 0.1s ease-out, color 0.1s ease-out;
+    transform-origin: center;
+}
+.strum-icon.highlight {
+    transform: scale(1.25);
+    color: #60a5fa; /* blue-400 */
+}
+.arpeggio-dot {
+    transition: transform 0.1s ease-out;
+    /* This makes transform-origin behave as expected for SVG elements */
+    transform-box: fill-box;
+    transform-origin: center;
+}
+.arpeggio-dot circle {
+    transition: fill 0.1s ease-out;
+}
+.arpeggio-dot.highlight {
+    transform: scale(1.2);
+}
+.arpeggio-dot.highlight circle {
+    fill: #60a5fa; /* blue-400 */
+}
+.strum-icon svg {
+    width: 100%;
+    height: 100%;
+}
+#loop-btn.active {
+    background-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+/* Chord Library Click Highlight */
+.playable-diagram {
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+.playable-diagram.highlighted {
+    border-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+/* Chord Library Selection Mode */
+#chord-library-list.selection-mode .chord-library-item {
+    cursor: pointer;
+    border-color: #4b5563; /* gray-600 */
+    transition: all 0.2s ease-in-out;
+}
+#chord-library-list.selection-mode .chord-library-item:hover {
+    border-color: #3b82f6; /* blue-500 */
+    background-color: #1f2937; /* gray-800 */
+    transform: translateY(-2px);
+}
+
+/* Toggle Switch Styles */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 24px;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #4b5563;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #3b82f6;
+}
+input:focus + .slider {
+    box-shadow: 0 0 1px #3b82f6;
+}
+input:checked + .slider:before {
+    -webkit-transform: translateX(16px);
+    -ms-transform: translateX(16px);
+    transform: translateX(16px);
+}
+
+/* Rhythm Editor Grid Styles */
+.rhythm-grid {
+    display: flex;
+    gap: 2px;
+}
+.rhythm-grid-cell {
+    flex: 1 0 50px; /* Base width */
+    height: 50px;
+    background-color: #374151; /* gray-700 */
+    border: 1px solid #4b5563; /* gray-600 */
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+.rhythm-grid-cell:hover {
+    background-color: #4b5563; /* gray-600 */
+}
+.rhythm-grid-cell.beat-marker {
+    border-left: 2px solid #6b7280; /* gray-500 */
+}
+.rhythm-grid-cell .strum-icon {
+    width: 32px;
+    height: 32px;
+    pointer-events: none;
+}
+.rhythm-arpeggio-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.rhythm-arpeggio-row {
+    display: flex;
+}
+.rhythm-arpeggio-row-header {
+    width: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #9ca3af; /* gray-400 */
+    background-color: #1f2937; /* gray-800 */
+    border-radius: 4px;
+    margin-right: 4px;
+}
+.rhythm-arpeggio-grid .rhythm-grid-cell {
+    height: 40px;
+}
+.rhythm-arpeggio-grid .rhythm-grid-cell.active {
+    background-color: #3b82f6; /* blue-500 */
+    border-color: #60a5fa; /* blue-400 */
+}
+
+#app-content {
+    transition: padding-bottom 0.3s ease-in-out;
+}
+#app-content.song-arranger-open {
+    padding-bottom: 90px;
+}
+/* Song Arranger Bottom Panel Styles */
+#song-arranger-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background-color: #1f2937; /* gray-800 */
+    border-top: 1px solid #374151; /* gray-700 */
+    height: 90px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+#song-arranger-panel.open {
+    transform: translateY(0);
+}
+#song-timeline-container {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#song-arranger-toggle {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1f2937; /* gray-800 */
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    padding: 0.25rem 1rem;
+    z-index: 35;
+    transition: bottom 0.3s ease-in-out, background-color 0.2s;
+}
+#song-arranger-toggle:hover {
+    background-color: #374151; /* gray-700 */
+}
+/* The panel is a sibling that comes before the toggle */
+#song-arranger-panel.open + #song-arranger-toggle {
+    bottom: 90px;
+}
+#song-arranger-panel.open + #song-arranger-toggle svg {
+    transform: rotate(180deg);
+}
+
+
+.song-section-block {
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+    cursor: grab;
+}
+.song-section-block.playing {
+    border-color: #3b82f6;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+.song-section-block.selected {
+    border-color: #3b82f6; /* blue-500 */
+}
+.section-chord-pill {
+    transition: background-color 0.2s ease;
+}
+.section-chord-pill.playing {
+    background-color: #3b82f6 !important;
+    color: white;
+}
+
+.section-chords-container::-webkit-scrollbar {
+    height: 4px;
+}
+.section-chords-container::-webkit-scrollbar-track {
+    background: #1f2937;
+    border-radius: 2px;
+}
+.section-chords-container::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 2px;
+}
+.section-chords-container::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+.section-chords-container {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #1f2937;
+}
+
+/* Drag & Drop Styles */
+.song-section-block.dragging {
+    opacity: 0.4;
+}
+.drag-over-placeholder {
+    min-height: 50px;
+    flex-shrink: 0;
+    border: 2px dashed #4b5563;
+    border-radius: 0.5rem;
+    background-color: rgba(75, 85, 99, 0.2);
+}
+
+/* Progression Toolbar (Top) */
+#progression-toolbar-container {
+    transition: transform 0.3s ease-in-out;
+    transform: translateY(0);
+}
+#progression-toolbar-container.collapsed {
+    transform: translateY(-100%);
+}
+#progression-bar-toggle:hover {
+    background-color: #374151; /* gray-700 */
+}
+#progression-toolbar-container.collapsed #progression-bar-toggle svg {
+    transform: rotate(180deg);
+}
+
+#progression-preview-chords { cursor: grab; }
+#progression-preview-chords.dragging { opacity: 0.5; cursor: grabbing; }
+
+
+/* Free Explore Placeholder Node */
+.placeholder-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 112px;
+    height: 112px;
+    border: 3px dashed #4b5563;
+    border-radius: 0.5rem;
+    color: #d1d5db;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+}
+.placeholder-node:hover {
+    background-color: #1f2937;
+    border-color: #3b82f6;
+    color: #e5e7eb;
+}
+
+/* Log Modal Styles */
+.log-entry {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border-left-width: 4px;
+}
+.log-entry.log-info {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6; /* blue-500 */
+}
+.log-entry.log-warn {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: #f59e0b; /* amber-500 */
+}
+.log-entry.log-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444; /* red-500 */
+}
+.log-entry.log-action {
+    background-color: rgba(168, 85, 247, 0.1);
+    border-color: #a855f7; /* purple-500 */
+}
+.log-timestamp {
+    color: #9ca3af; /* gray-400 */
+    margin-right: 12px;
+    font-size: 0.8em;
+}
+.log-message {
+    color: #d1d5db; /* gray-300 */
+}
+.log-details {
+    color: #6b7280; /* gray-500 */
+    margin-top: 4px;
+    padding-left: 12px;
+    white-space: pre-wrap; /* For error stacks */
+}
